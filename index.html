@@ -9,6 +9,7 @@
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="manifest" href="/site.webmanifest">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -896,6 +897,15 @@ footer { border-top: 1px solid var(--border-s); padding: 24px; transition: borde
 </footer>
 
 <script>
+// ── Supabase config — replace with your project values ──────────────────────
+const SUPABASE_URL  = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON = 'YOUR_SUPABASE_ANON_KEY';
+
+const _sb = (SUPABASE_URL !== 'YOUR_SUPABASE_URL')
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON)
+  : null;
+// ────────────────────────────────────────────────────────────────────────────
+
 function toggleTheme(chk) {
   document.documentElement.setAttribute('data-theme', chk.checked ? 'dark' : 'light');
   localStorage.setItem('dz-theme', chk.checked ? 'dark' : 'light');
@@ -910,14 +920,42 @@ function toggleTheme(chk) {
   }
 })();
 
-function submitForm(fieldsId, okId) {
-  const fields = document.getElementById(fieldsId);
-  const ok = document.getElementById(okId);
-  const email = fields.querySelector('input[type="email"]');
-  const first = fields.querySelector('input[type="text"]');
-  if (!first.value.trim() || !email.value.trim() || !email.value.includes('@')) {
-    email.focus(); return;
+async function submitForm(fieldsId, okId) {
+  const fields   = document.getElementById(fieldsId);
+  const ok       = document.getElementById(okId);
+  const emailEl  = fields.querySelector('input[type="email"]');
+  const textEls  = fields.querySelectorAll('input[type="text"]');
+  const firstEl  = textEls[0];
+  const lastEl   = textEls[1];
+
+  // Basic validation
+  if (!firstEl.value.trim() || !emailEl.value.trim() || !emailEl.value.includes('@')) {
+    emailEl.style.borderColor = 'var(--red)';
+    emailEl.focus();
+    return;
   }
+  emailEl.style.borderColor = '';
+
+  if (_sb) {
+    const { error } = await _sb.from('leads').insert({
+      email:      emailEl.value.trim().toLowerCase(),
+      first_name: firstEl.value.trim(),
+      last_name:  lastEl ? lastEl.value.trim() : '',
+    });
+
+    if (error) {
+      if (error.code === '23505') {
+        // Duplicate email — still show success, just with a different message
+        ok.querySelector('strong').textContent = "You're already on the list!";
+        ok.querySelector('span').textContent   = "We already have your email — we'll be in touch when we launch.";
+      } else {
+        emailEl.style.borderColor = 'var(--red)';
+        emailEl.focus();
+        return;
+      }
+    }
+  }
+
   fields.style.display = 'none';
   ok.classList.add('show');
 }
