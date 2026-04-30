@@ -3,3 +3,5 @@ DashZen Design System-handoff.zip
 DashZen_Project_Documentation.docx
 .claude/
 node_modules/
+node_modules/
+package-lock.json
